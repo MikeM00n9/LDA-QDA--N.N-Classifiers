@@ -7,14 +7,14 @@ library(gganimate)
 library(gifski)
 
 
-df <- read.csv("d:\\data 477\\three potentisl data sets\\three potentisl data sets\\healthcare-dataset-stroke-data.csv")
+df <- read.csv("D:\\data 477\\three potentisl data sets\\three potentisl data sets\\WA_Fn-UseC_-Telco-Customer-Churn - Copy.csv",
+               stringsAsFactors = TRUE)
 
-df$bmi <- as.numeric(df$bmi)          # "N/A" becomes NA (a warning here is expected)
-df <- na.omit(df)                      # drop rows with missing bmi
-df <- df[df$gender != "Other", ]       # drop the single "Other" row
-df$target <- as.factor(df$stroke)
-df$stroke <- NULL                      # remove the answer column
-df$id <- NULL                          # remove the ID column
+df$TotalCharges <- as.numeric(as.character(df$TotalCharges))  # 11 blanks become NA
+df <- na.omit(df)                                  # drop the 11 rows with missing TotalCharges
+df$target <- factor(ifelse(df$Churn == "Yes", 1, 0), levels = c(0, 1))  # 1 = churned
+df$Churn <- NULL                                   # remove the answer column
+df$customerID <- NULL                              # remove the ID column
 
 set.seed(11072026)
 train_index <- createDataPartition(df$target, p = 0.7, list = FALSE)
@@ -40,7 +40,7 @@ print(sizes)
 #fit LDA MODEl
  fit_lda <- lda(target ~ ., data = train)
 #fit QDA model
-fit_qda <- qda(target ~age + hypertension + heart_disease + avg_glucose_level + bmi, data = train)
+fit_qda <- qda(target ~ SeniorCitizen + tenure + MonthlyCharges + TotalCharges, data = train)
 
 
 
@@ -53,7 +53,7 @@ val_pred_qda <- predict(fit_qda, newdata = Validation)$class
 test_pred <- predict(fit_lda, newdata = Test)$class
 test_pred_qda <- predict(fit_qda, newdata = Test)$class
 
-#Confusion matrix (shows how many strokes it actually caught)
+#Confusion matrix (shows how many churners it actually caught)
 confusionMatrix(val_pred_qda, Validation$target, positive = "1")
 
 
@@ -118,7 +118,7 @@ for (i in 1:n_steps) {
   p_tr <- as.numeric(predict(fit, train_scaled,      type = "raw"))
   p_va <- as.numeric(predict(fit, validation_scaled, type = "raw"))
 
-  # error + how many strokes it catches
+  # error + how many churners it catches
   curve_list[[i]] <- data.frame(
     iter   = it,
     set    = c("Training", "Validation"),
@@ -156,9 +156,9 @@ anim_save("d:/data 477/nn_learning_curve.gif")
 a2 <- ggplot(prob_df, aes(prob, fill = actual)) +
   geom_histogram(bins = 30, boundary = 0) +
   facet_wrap(~ actual, ncol = 1, scales = "free_y",
-             labeller = labeller(actual = c(`0` = "No stroke", `1` = "Stroke"))) +
+             labeller = labeller(actual = c(`0` = "Stayed", `1` = "Churned"))) +
   geom_vline(xintercept = 0.5, linetype = "dashed") +
-  labs(title = "Predicted P(stroke) - iteration {closest_state}", x = "P(stroke)", y = "Count") +
+  labs(title = "Predicted P(churn) - iteration {closest_state}", x = "P(churn)", y = "Count") +
   theme(legend.position = "none") +
   transition_states(iter, transition_length = 1, state_length = 0)
 animate(a2, nframes = 120, fps = 10, renderer = gifski_renderer())
